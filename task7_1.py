@@ -32,13 +32,19 @@ def gauss(A: Matrix, b: Matrix, pivot=True):
     return Matrix(x, "col"), det, counter
 
 if __name__ == "__main__":
-    n = 5
-    A_data = [[1/(i+j-1) for j in range(1, n+1)] for i in range(1, n+1)]
-    A = Matrix(A_data)
-    x_true = Matrix([1]*n, "col")
-    b = A * x_true
+    sizes = [5, 8, 10, 12]
+    for n in sizes:
+        A_data = [[1 / (i + j - 1) for j in range(1, n + 1)] for i in range(1, n + 1)]
+        A = Matrix(A_data)
+        x_true = Matrix([1] * n, "col")
+        b = A * x_true
 
-    x_gauss, det, counter = gauss(A, b)
-    print("x =", [round(v[0], 5) for v in x_gauss.data])
-    print("det =", det)
-    print("ops =", counter)
+        cond = A.condition_number()
+        x_gauss, det, counter = gauss(A, b)
+        error = max(abs(x_gauss.data[i][0] - 1) for i in range(n))
+
+        print(f"n = {n}")
+        print(f"  cond(A)        = {cond:.3e}")
+        print(f"  det            = {det:.3e}")
+        print(f"  max error      = {error:.3e}")
+        print(f"  operations     = {counter}")

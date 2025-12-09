@@ -47,6 +47,10 @@ class Matrix:
         mat = np.array(self.data)
         return np.sqrt(max(np.linalg.eigvals(mat.T @ mat)))
 
+    def condition_number(self, p=2):
+        """Return matrix condition number in the given norm (default 2-norm)."""
+        return float(np.linalg.cond(np.array(self.data), p=p))
+
     def det(self):
         return np.linalg.det(np.array(self.data))
 
