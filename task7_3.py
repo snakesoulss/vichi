@@ -1,4 +1,4 @@
-from matrix_lib import Matrix
+from task7_0 import Matrix
 import numpy as np
 
 def thomas(A: Matrix, b: Matrix):

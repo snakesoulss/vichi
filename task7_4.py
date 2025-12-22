@@ -1,69 +1,53 @@
-from matrix_lib import Matrix
-from task7_1 import gauss
-from task7_3 import thomas
 import numpy as np
-from time import perf_counter
+from task7_0 import Matrix
 
-def lup(A: Matrix, b: Matrix):
+def cholesky(A: Matrix, b: Matrix):
+    if not A.is_positive_definite():
+        raise ValueError("Матрица не является положительно определённой")
+
     n = A.rows
-    A = [row[:] for row in A.data]
-    b = [row[0] for row in b.data]
+    A = np.array(A.data)
+    b = np.array([r[0] for r in b.data])
+
+    L = np.zeros((n, n))
     counter = 0
 
     for i in range(n):
-        max_row = max(range(i, n), key=lambda r: abs(A[r][i]))
-        A[i], A[max_row] = A[max_row], A[i]
-        b[i], b[max_row] = b[max_row], b[i]
+        for j in range(i + 1):
+            s = sum(L[i][k] * L[j][k] for k in range(j))
+            counter += 2 * j
+            if i == j:
+                L[i][j] = np.sqrt(A[i][i] - s)
+            else:
+                L[i][j] = (A[i][j] - s) / L[j][j]
+            counter += 2
 
-        for j in range(i + 1, n):
-            A[j][i] /= A[i][i]
-            for k in range(i + 1, n):
-                A[j][k] -= A[j][i] * A[i][k]
-                counter += 2
-
-    y = [0] * n
+    # Прямой ход
+    y = np.zeros(n)
     for i in range(n):
-        y[i] = b[i] - sum(A[i][j] * y[j] for j in range(i))
-        counter += 2 * i
+        y[i] = (b[i] - sum(L[i][j] * y[j] for j in range(i))) / L[i][i]
+        counter += 2 * i + 1
 
-    x = [0] * n
+    # Обратный ход
+    x = np.zeros(n)
     for i in range(n - 1, -1, -1):
-        x[i] = (y[i] - sum(A[i][j] * x[j] for j in range(i + 1, n))) / A[i][i]
-        counter += 2 * (n - i)
+        x[i] = (y[i] - sum(L[j][i] * x[j] for j in range(i + 1, n))) / L[i][i]
+        counter += 2 * (n - i) + 1
 
-    return Matrix(x, "col"), counter
-
-
-def build_tridiagonal(n, diag=4, off_diag=1):
-    data = [[0] * n for _ in range(n)]
-    for i in range(n):
-        data[i][i] = diag
-        if i > 0:
-            data[i][i - 1] = off_diag
-        if i < n - 1:
-            data[i][i + 1] = off_diag
-    return Matrix(data)
-
+    det = np.prod(np.diag(L)) ** 2
+    return Matrix(x.tolist(), "col"), det, counter
 
 if __name__ == "__main__":
-    sizes = [50, 100, 200]
-    print("Сравнение скорости на трёхдиагональных СЛАУ:")
-    for n in sizes:
-        A = build_tridiagonal(n)
-        x_true = Matrix([1] * n, "col")
-        b = A * x_true
+    n = 5
+    A_data = [[1/(i+j-1) for j in range(1, n+1)] for i in range(1, n+1)]
+    for i in range(n):
+        A_data[i][i] += 1  # чтобы сделать A положительно определённой
 
-        start = perf_counter()
-        x_t, ops_t = thomas(A, b)
-        t_t = perf_counter() - start
+    A = Matrix(A_data)
+    x_true = Matrix([1]*n, "col")
+    b = A * x_true
 
-        start = perf_counter()
-        x_g, _, ops_g = gauss(A, b)
-        t_g = perf_counter() - start
-
-        err_t = max(abs(x_t.data[i][0] - 1) for i in range(n))
-        err_g = max(abs(x_g.data[i][0] - 1) for i in range(n))
-
-        print(f"n = {n}")
-        print(f"  Thomas: {t_t*1e3:7.2f} ms, ops = {ops_t:7d}, max error = {err_t:.2e}")
-        print(f"  Gauss : {t_g*1e3:7.2f} ms, ops = {ops_g:7d}, max error = {err_g:.2e}")
+    x_ch, det, counter = cholesky(A, b)
+    print("x =", [round(v[0], 5) for v in x_ch.data])
+    print("det =", det)
+    print("ops =", counter)
